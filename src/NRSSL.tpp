@@ -27,7 +27,7 @@ NRSSL::convertDoubleToUint(double value, Type type) {
 
     jmethodID applyMethod =
         getJMethod(nrsClass, JNI_METHODS::APPLY,
-                   createSignature(JNI_TYPES::POSIT_B, {JNI_TYPES::DOUBLE, JNI_TYPES::INT,
+                   createSignature(currentNrsClassBPath, {JNI_TYPES::DOUBLE, JNI_TYPES::INT,
                                                         JNI_TYPES::INT, JNI_TYPES::ROUNDING_TYPE}),
                    true);
 

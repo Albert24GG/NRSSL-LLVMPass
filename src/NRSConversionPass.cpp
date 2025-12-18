@@ -8,11 +8,23 @@
 #include <llvm/IR/PassManager.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Passes/PassPlugin.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include "NRSSL.h"
 
 using namespace llvm;
+
+static cl::opt<NRSSL::Type> selectedNRSSLType(
+    "float_type", cl::desc("Choose the floating point representation"),
+    cl::values(clEnumValN(NRSSL::Type::POSIT, "posit", "Posit representation"),
+               clEnumValN(NRSSL::Type::MORRIS, "morris", "Morris representation"),
+               clEnumValN(NRSSL::Type::MORRIS_HEB, "morris_heb", "Morris HEB representation"),
+               clEnumValN(NRSSL::Type::MORRIS_BIAS_HEB, "morris_bias_heb",
+                          "Morris bias HEB representation"),
+               clEnumValN(NRSSL::Type::MORRIS_UNARY_HEB, "morris_unary_heb",
+                          "Morris unary HEB representation")),
+    cl::init(NRSSL::Type::POSIT));
 
 class NRSConversionPass : public PassInfoMixin<NRSConversionPass> {
 
@@ -74,7 +86,7 @@ class NRSConversionPass : public PassInfoMixin<NRSConversionPass> {
             float IeeeValue;
             memcpy(&IeeeValue, OldBits.getRawData(), sizeof(float));
 
-            uint32_t PositValue = nrssl.convertDoubleToUint<uint32_t>(IeeeValue, NRSSL::POSIT);
+            uint32_t PositValue = nrssl.convertDoubleToUint<uint32_t>(IeeeValue, selectedNRSSLType);
             APInt NewBits(32, PositValue);
 
             APFloat NewAPF(APFloat::IEEEsingle(), NewBits);
@@ -85,7 +97,7 @@ class NRSConversionPass : public PassInfoMixin<NRSConversionPass> {
             double IeeeValue;
             memcpy(&IeeeValue, OldBits.getRawData(), sizeof(double));
 
-            uint64_t PositValue = nrssl.convertDoubleToUint<uint64_t>(IeeeValue, NRSSL::POSIT);
+            uint64_t PositValue = nrssl.convertDoubleToUint<uint64_t>(IeeeValue, selectedNRSSLType);
             APInt NewBits(64, PositValue);
 
             APFloat NewAPF(APFloat::IEEEdouble(), NewBits);
@@ -98,13 +110,14 @@ class NRSConversionPass : public PassInfoMixin<NRSConversionPass> {
     Constant *processConstant(Constant *C, LLVMContext &Context) {
 
         std::cout << "Processing constant" << "\n";
-        
+
         if (ConstantFP *FpConst = dyn_cast<ConstantFP>(C)) {
             return convertConstantFP(FpConst, Context);
         }
 
         if (ConstantDataArray *DataArrayConst = dyn_cast<ConstantDataArray>(C)) {
-            std::cout << "Processing ConstantDataArray with " << DataArrayConst->getNumElements() << " elements\n";
+            std::cout << "Processing ConstantDataArray with " << DataArrayConst->getNumElements()
+                      << " elements\n";
             std::vector<Constant *> NewElements;
             for (int i = 0; i < DataArrayConst->getNumElements(); ++i) {
                 Constant *Elem = DataArrayConst->getElementAsConstant(i);
@@ -117,9 +130,10 @@ class NRSConversionPass : public PassInfoMixin<NRSConversionPass> {
             }
             return ConstantArray::get(DataArrayConst->getType(), NewElements);
         }
-        
+
         if (ConstantArray *ArrConst = dyn_cast<ConstantArray>(C)) {
-            std::cout << "Processing ConstantArray with " << ArrConst->getNumOperands() << " elements\n";
+            std::cout << "Processing ConstantArray with " << ArrConst->getNumOperands()
+                      << " elements\n";
             std::vector<Constant *> NewElements;
             for (int i = 0; i < ArrConst->getNumOperands(); ++i) {
                 Constant *Elem = ArrConst->getOperand(i);
