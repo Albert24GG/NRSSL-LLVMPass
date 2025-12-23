@@ -22,12 +22,12 @@ std::string const POSIT = "ro/upb/nrs/sl/Posit";
 std::string const POSIT_B = "ro/upb/nrs/sl/Posit_B";
 std::string const MORRIS = "ro/upb/nrs/sl/Morris";
 std::string const MORRIS_B = "ro/upb/nrs/sl/Morris_B";
-std::string const MORRIS_HEB = "ro/upb/nrs/sl/MorrisHeb";
-std::string const MORRIS_HEB_B = "ro/upb/nrs/sl/MorrisHeb_B";
-std::string const MORRIS_BIAS_HEB = "ro/upb/nrs/sl/MorrisBiasHeb";
-std::string const MORRIS_BIAS_HEB_B = "ro/upb/nrs/sl/MorrisBiasHeb_B";
-std::string const MORRIS_UNARY_HEB = "ro/upb/nrs/sl/MorrisUnaryHeb";
-std::string const MORRIS_UNARY_HEB_B = "ro/upb/nrs/sl/MorrisUnaryHeb_B";
+std::string const MORRIS_HEB = "ro/upb/nrs/sl/MorrisHEB";
+std::string const MORRIS_HEB_B = "ro/upb/nrs/sl/MorrisHEB_B";
+std::string const MORRIS_BIAS_HEB = "ro/upb/nrs/sl/MorrisBiasHEB";
+std::string const MORRIS_BIAS_HEB_B = "ro/upb/nrs/sl/MorrisBiasHEB_B";
+std::string const MORRIS_UNARY_HEB = "ro/upb/nrs/sl/MorrisUnaryHEB";
+std::string const MORRIS_UNARY_HEB_B = "ro/upb/nrs/sl/MorrisUnaryHEB_B";
 std::string const ROUNDING_TYPE = "ro/upb/nrs/sl/RoundingType";
 } // namespace JNI_TYPES
 
