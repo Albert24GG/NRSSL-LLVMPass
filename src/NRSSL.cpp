@@ -95,10 +95,10 @@ jmethodID NRSSL::getJMethod(jclass clazz, std::string method_name, std::string s
     return method;
 }
 
-std::string NRSSL::createSignature(std::string returnType,
-                                   std::initializer_list<std::string> args) {
+std::string NRSSL::createSignature(std::string_view returnType,
+                                   std::initializer_list<std::string_view> args) {
 
-    static const std::vector<std::string> primitives = {
+    static const std::vector<std::string_view> primitives = {
         JNI_TYPES::VOID, JNI_TYPES::BOOLEAN, JNI_TYPES::INT,   JNI_TYPES::SHORT,
         JNI_TYPES::BYTE, JNI_TYPES::LONG,    JNI_TYPES::FLOAT, JNI_TYPES::DOUBLE};
 
@@ -116,7 +116,7 @@ std::string NRSSL::createSignature(std::string returnType,
 
     signature += std::find(primitives.begin(), primitives.end(), returnType) != primitives.end()
                      ? returnType
-                     : "L" + returnType + ";";
+                     : "L" + std::string(returnType) + ";";
 
     return signature;
 }

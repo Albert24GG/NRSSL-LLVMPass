@@ -7,6 +7,39 @@
 #include <limits>
 #include <type_traits>
 
+template <const char *inputValueType, typename T>
+jobject NRSSL::callApplyMethod(jclass nrsClass, Type floatType, T value, int exponentSize, int size,
+                        jobject roundingType) {
+    const auto &[_, _, currentNrsClassBPath] = getTypeProperties(floatType);
+
+    auto applyMethodSig = [&] {
+        switch (floatType) {
+        case MORRIS_UNARY_HEB: {
+            const static auto sig =
+                createSignature(currentNrsClassBPath,
+                                {inputValueType, JNI_TYPES::INT, JNI_TYPES::ROUNDING_TYPE});
+            return sig;
+        }
+        default: {
+            const static auto sig =
+                createSignature(currentNrsClassBPath, {inputValueType, JNI_TYPES::INT,
+                                                       JNI_TYPES::INT, JNI_TYPES::ROUNDING_TYPE});
+            return sig;
+        }
+        }
+    }();
+
+    jmethodID applyMethod = getJMethod(nrsClass, JNI_METHODS::APPLY, applyMethodSig, true);
+
+    switch (floatType) {
+    case MORRIS_UNARY_HEB:
+        return env->CallObjectMethod(nrsClass, applyMethod, value, size, roundingType);
+    default:
+        return env->CallObjectMethod(nrsClass, applyMethod, value, exponentSize, size,
+                                     roundingType);
+    }
+}
+
 template <typename T>
 typename std::enable_if<std::is_unsigned<T>::value, T>::type
 NRSSL::convertDoubleToUint(double value, Type type) {
@@ -25,18 +58,12 @@ NRSSL::convertDoubleToUint(double value, Type type) {
         getJMethod(nrsClass, JNI_METHODS::DEFAULTROUNDING,
                    createSignature(JNI_TYPES::ROUNDING_TYPE, {}), true);
 
-    jmethodID applyMethod =
-        getJMethod(nrsClass, JNI_METHODS::APPLY,
-                   createSignature(currentNrsClassBPath, {JNI_TYPES::DOUBLE, JNI_TYPES::INT,
-                                                        JNI_TYPES::INT, JNI_TYPES::ROUNDING_TYPE}),
-                   true);
 
     jobject roundingType = env->CallStaticObjectMethod(nrsClass, defaultRoundingMethod);
     int size = sizeof(T) * 8;
     int exponentSize = currentNrsSizeMap.at(size);
 
-    jobject nrsB =
-        env->CallObjectMethod(nrsClass, applyMethod, value, exponentSize, size, roundingType);
+    jobject nrsB = callApplyMethod<JNI_TYPES::DOUBLE>(nrsClass, type, value, exponentSize, size, roundingType);
 
     jmethodID getBitsMethod = getJMethod(nrsClassB, JNI_METHODS::TO_BINARY_STRING,
                                          createSignature(JNI_TYPES::STRING, {}), false);
@@ -67,12 +94,6 @@ double NRSSL::convertUintToDouble(T value, Type type) {
         getJMethod(nrsClass, JNI_METHODS::DEFAULTROUNDING,
                    createSignature(JNI_TYPES::ROUNDING_TYPE, {}), true);
 
-    jmethodID applyMethod = getJMethod(
-        nrsClass, JNI_METHODS::APPLY,
-        createSignature(currentNrsClassBPath, {JNI_TYPES::STRING, JNI_TYPES::INT, JNI_TYPES::INT,
-                                               JNI_TYPES::ROUNDING_TYPE}),
-        true);
-
     jmethodID toDoubleMethod =
         getJMethod(nrsClassB, JNI_METHODS::TO_DOUBLE, createSignature(JNI_TYPES::DOUBLE, {}));
 
@@ -82,11 +103,11 @@ double NRSSL::convertUintToDouble(T value, Type type) {
 
     auto binaryString = UintToBinaryString(value);
 
-    jobject posit_1 =
-        env->CallStaticObjectMethod(nrsClass, applyMethod, env->NewStringUTF(binaryString.c_str()),
-                                    exponentSize, size, roundingType);
+    jobject convertedValue = callApplyMethod<JNI_TYPES::STRING>(nrsClass, type,
+                                                    env->NewStringUTF(binaryString.c_str()),
+                                                    exponentSize, size, roundingType);
 
-    jdouble doubleValue = env->CallDoubleMethod(posit_1, toDoubleMethod);
+    jdouble doubleValue = env->CallDoubleMethod(convertedValue, toDoubleMethod);
 
     return doubleValue;
 }
