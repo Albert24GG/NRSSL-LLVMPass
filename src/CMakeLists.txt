@@ -10,6 +10,8 @@ SET(CMAKE_CXX_FLAGS "-Wall -fno-rtti -fPIC")
 SET(NRSSL_PATH "${CMAKE_SOURCE_DIR}/jars")
 
 # Find LLVM
+
+set(LLVM_DIR /racheta/llvm-project/build/lib/cmake/llvm)
 find_package(LLVM REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})

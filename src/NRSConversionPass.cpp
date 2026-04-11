@@ -4,6 +4,9 @@
 #include <jni.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/Passes/PassBuilder.h>
@@ -53,9 +56,33 @@ class NRSConversionPass : public PassInfoMixin<NRSConversionPass> {
             }
         }
 
+        LLVMContext &ctx = M.getContext();
+        Function *nrssl_fadd_func = Intrinsic::getDeclaration(&M, Intrinsic::posit_f32_add);
+
         for (auto &F : M) {
             for (auto &BB : F) {
                 for (auto &I : BB) {
+
+                    if (I.isBinaryOp()) {
+                        auto *binop = static_cast<BinaryOperator *>(&I);
+                        switch (binop->getOpcode()) {
+                        case Instruction::FAdd: {
+                            IRBuilder builder(&I);
+                            Value *lhs = binop->getOperand(0);
+                            Value *rhs = binop->getOperand(1);
+
+                            Value *nrssl_fadd =
+                                builder.CreateCall(FunctionCallee(nrssl_fadd_func), {lhs, rhs});
+                            binop->replaceAllUsesWith(nrssl_fadd);
+                            binop->eraseFromParent();
+
+                            break;
+                        }
+
+                        default:
+                            break;
+                        }
+                    }
                     if (auto *Store = dyn_cast<StoreInst>(&I)) {
                         Value *Value = Store->getValueOperand();
                         if (auto *Const = dyn_cast<Constant>(Value)) {
