@@ -129,8 +129,13 @@ NRSSL::getTypeProperties(NRSSL::Type type) {
     std::string currentNrsClassBPath;
 
     switch (type) {
-    case POSIT:
-        currentNrsSizeMap = sizeToExpSize;
+    case POSIT1:
+        currentNrsSizeMap = sizeToExpSizePosit1;
+        currentNrsClassPath = JNI_TYPES::POSIT;
+        currentNrsClassBPath = JNI_TYPES::POSIT_B;
+        break;
+    case POSIT2:
+        currentNrsSizeMap = sizeToExpSizePosit2;
         currentNrsClassPath = JNI_TYPES::POSIT;
         currentNrsClassBPath = JNI_TYPES::POSIT_B;
         break;

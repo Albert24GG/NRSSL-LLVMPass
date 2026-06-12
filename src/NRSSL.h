@@ -48,17 +48,19 @@ class NRSSL {
 
     bool shouldDetach = false;
 
-    const std::unordered_map<int, int> sizeToExpSize = {{8, 2}, {16, 2}, {32, 2}, {64, 2}};
+    const std::unordered_map<int, int> sizeToExpSizePosit1 = {{8, 2}, {16, 2}, {32, 2}, {64, 2}};
+    const std::unordered_map<int, int> sizeToExpSizePosit2 = {{8, 3}, {16, 3}, {32, 3}, {64, 3}};
     const std::unordered_map<int, int> sizeToGSizeMorris = {{8, 2}, {16, 3}, {32, 4}, {64, 6}};
 
-    std::reference_wrapper<const std::unordered_map<int, int>> currentNrsSizeMap = sizeToExpSize;
+    std::reference_wrapper<const std::unordered_map<int, int>> currentNrsSizeMap = sizeToExpSizePosit1;
 
   public:
     NRSSL();
     ~NRSSL();
 
     enum Type {
-        POSIT,
+        POSIT1,
+        POSIT2,
         MORRIS,
         MORRIS_HEB,
         MORRIS_UNARY_HEB,

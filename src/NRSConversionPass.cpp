@@ -21,8 +21,9 @@ namespace {
 
 cl::opt<NRSSL::Type> selected_nrs(
     "float_type", cl::desc("Choose the floating point representation"),
-    cl::init(NRSSL::Type::POSIT),
-    cl::values(clEnumValN(NRSSL::Type::POSIT, "posit", "Posit representation"),
+    cl::init(NRSSL::Type::POSIT1),
+    cl::values(clEnumValN(NRSSL::Type::POSIT1, "posit1", "Posit1 representation"),
+               clEnumValN(NRSSL::Type::POSIT2, "posit2", "Posit2 representation"),
                clEnumValN(NRSSL::Type::MORRIS, "morris", "Morris representation"),
                clEnumValN(NRSSL::Type::MORRIS_HEB, "morrisHeb", "Morris HEB representation"),
                clEnumValN(NRSSL::Type::MORRIS_UNARY_HEB, "morrisUnaryHeb",
@@ -35,7 +36,8 @@ class NRSIntrinsicSelector {
     explicit NRSIntrinsicSelector(NRSSL::Type nrs, Module &M) {
 
         static const std::unordered_map<NRSSL::Type, std::string> nrs_names = {
-            {NRSSL::Type::POSIT, "posit"},
+            {NRSSL::Type::POSIT1, "posit1"},
+            {NRSSL::Type::POSIT2, "posit2"},
             {NRSSL::Type::MORRIS, "morris"},
             {NRSSL::Type::MORRIS_HEB, "morrisHeb"},
             {NRSSL::Type::MORRIS_BIAS_HEB, "morrisBiasHeb"},
