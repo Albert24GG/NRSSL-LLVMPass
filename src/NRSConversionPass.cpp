@@ -98,6 +98,30 @@ class NRSIntrinsicSelector {
                 }
             }
         }
+
+        // Map intrinsics (special ops) to their corresponding intrinsics
+        {
+            static const std::array intrinsic_names{
+                std::make_pair("min", Intrinsic::minnum),
+                std::make_pair("max", Intrinsic::maxnum),
+            };
+
+            for (const auto &[intrinsic_name, src_intrinsic_id] : intrinsic_names) {
+                const auto full_intrinsic_name = intrinsic_prefix + intrinsic_name;
+                const auto target_intrinsic_id = Function::lookupIntrinsicID(full_intrinsic_name);
+                const auto target_intrinsic_func =
+                    Intrinsic::getDeclaration(&M, target_intrinsic_id);
+                if (target_intrinsic_func) {
+                    intrinsic_to_intrinsic_[src_intrinsic_id] = target_intrinsic_func;
+                    std::cout << "Mapped intrinsic " << full_intrinsic_name
+                              << " to intrinsic function " << target_intrinsic_func->getName().str()
+                              << "\n";
+                } else {
+                    std::cerr << "Warning: Intrinsic " << full_intrinsic_name
+                              << " not found in LLVM. This operation will not be converted.\n";
+                }
+            }
+        }
     }
 
     Function *get_intrinsic_replacement(const Instruction &I) const {
@@ -129,6 +153,14 @@ class NRSIntrinsicSelector {
             if (it != fcmp_to_intrinsic_.end()) {
                 return it->second;
             }
+        } else if (const auto *Call = dyn_cast<CallBase>(&I)) {
+            Function *called_fun = Call->getCalledFunction();
+            if (called_fun && called_fun->isIntrinsic()) {
+                auto it = intrinsic_to_intrinsic_.find(called_fun->getIntrinsicID());
+                if (it != intrinsic_to_intrinsic_.end()) {
+                    return it->second;
+                }
+            }
         }
         return nullptr; // No replacement found
     }
@@ -140,6 +172,7 @@ class NRSIntrinsicSelector {
     std::unordered_map<unsigned, Function *> op_to_intrinsic_{};
     enum class FCmpOpcode { FCMP_EQ, FCMP_LT, FCMP_LE, FCMP_INVALID };
     std::unordered_map<FCmpOpcode, Function *> fcmp_to_intrinsic_{};
+    std::unordered_map<Intrinsic::ID, Function *> intrinsic_to_intrinsic_{};
 };
 
 } // namespace
@@ -195,7 +228,8 @@ class NRSConversionPass : public PassInfoMixin<NRSConversionPass> {
                         IRBuilder builder(&I);
                         std::vector<Value *> operands = [&I] {
                             const auto operands = I.operands();
-                            std::vector<Value *> operand_vec(operands.begin(), operands.end());
+                            std::vector<Value *> operand_vec(operands.begin(),
+                                                             std::next(operands.begin(), 2));
                             return operand_vec;
                         }();
                         Value *new_call = builder.CreateCall(intrinsic_replacement, operands);
