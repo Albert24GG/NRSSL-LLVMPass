@@ -48,7 +48,7 @@ class NRSIntrinsicSelector {
 
         // Map binary/unary ops to their corresponding intrinsics
         {
-            static constexpr std::array binop_names{
+            static constexpr std::array op_names{
                 std::make_pair("add", static_cast<unsigned>(Instruction::FAdd)),
                 std::make_pair("sub", static_cast<unsigned>(Instruction::FSub)),
                 std::make_pair("mul", static_cast<unsigned>(Instruction::FMul)),
@@ -58,16 +58,16 @@ class NRSIntrinsicSelector {
                 std::make_pair("cvtFromInt", static_cast<unsigned>(Instruction::SIToFP)),
                 std::make_pair("cvtFromUInt", static_cast<unsigned>(Instruction::UIToFP))};
 
-            for (const auto &[binop_name, binop_opcode] : binop_names) {
-                const auto intrinsic_name = intrinsic_prefix + binop_name;
+            for (const auto &[op_name, op_opcode] : op_names) {
+                const auto intrinsic_name = intrinsic_prefix + op_name;
                 const auto intrinsic_id = Function::lookupIntrinsicID(intrinsic_name);
                 std::cout << "Looking up intrinsic: " << intrinsic_name << std::endl;
                 std::cout << "Intrinsic id: " << intrinsic_id << " for " << intrinsic_name
                           << std::endl;
                 const auto intrinsic_func = Intrinsic::getDeclaration(&M, intrinsic_id);
                 if (intrinsic_func) {
-                    op_to_intrinsic_[binop_opcode] = intrinsic_func;
-                    std::cout << "Mapped binary operator " << binop_name
+                    op_to_intrinsic_[op_opcode] = intrinsic_func;
+                    std::cout << "Mapped operation " << op_name
                               << " to intrinsic function " << intrinsic_func->getName().str()
                               << "\n";
                 } else {
