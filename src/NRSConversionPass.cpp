@@ -48,29 +48,28 @@ class NRSIntrinsicSelector {
 
         // Map binary/unary ops to their corresponding intrinsics
         {
-            static const std::array<std::pair<const char *, std::vector<unsigned>>, 6> binop_names{
-                std::make_pair("add", std::vector<unsigned>{Instruction::FAdd}),
-                std::make_pair("sub", std::vector<unsigned>{Instruction::FSub}),
-                std::make_pair("mul", std::vector<unsigned>{Instruction::FMul}),
-                std::make_pair("div", std::vector<unsigned>{Instruction::FDiv}),
-                std::make_pair("cvtToInt",
-                               std::vector<unsigned>{Instruction::FPToSI, Instruction::FPToUI}),
-                std::make_pair("cvtFromInt",
-                               std::vector<unsigned>{Instruction::SIToFP, Instruction::UIToFP})};
+            static constexpr std::array binop_names{
+                std::make_pair("add", static_cast<unsigned>(Instruction::FAdd)),
+                std::make_pair("sub", static_cast<unsigned>(Instruction::FSub)),
+                std::make_pair("mul", static_cast<unsigned>(Instruction::FMul)),
+                std::make_pair("div", static_cast<unsigned>(Instruction::FDiv)),
+                std::make_pair("cvtToInt", static_cast<unsigned>(Instruction::FPToSI)),
+                std::make_pair("cvtToUInt", static_cast<unsigned>(Instruction::FPToUI)),
+                std::make_pair("cvtFromInt", static_cast<unsigned>(Instruction::SIToFP)),
+                std::make_pair("cvtFromUInt", static_cast<unsigned>(Instruction::UIToFP))};
 
-            for (const auto &[op_name, op_opcodes] : binop_names) {
-                const auto intrinsic_name = intrinsic_prefix + op_name;
+            for (const auto &[binop_name, binop_opcode] : binop_names) {
+                const auto intrinsic_name = intrinsic_prefix + binop_name;
                 const auto intrinsic_id = Function::lookupIntrinsicID(intrinsic_name);
                 std::cout << "Looking up intrinsic: " << intrinsic_name << std::endl;
                 std::cout << "Intrinsic id: " << intrinsic_id << " for " << intrinsic_name
                           << std::endl;
                 const auto intrinsic_func = Intrinsic::getDeclaration(&M, intrinsic_id);
                 if (intrinsic_func) {
-                    for (const auto op_opcode : op_opcodes) {
-                        op_to_intrinsic_[op_opcode] = intrinsic_func;
-                    }
-                    std::cout << "Mapped binary operator " << op_name << " to intrinsic function "
-                              << intrinsic_func->getName().str() << "\n";
+                    op_to_intrinsic_[binop_opcode] = intrinsic_func;
+                    std::cout << "Mapped binary operator " << binop_name
+                              << " to intrinsic function " << intrinsic_func->getName().str()
+                              << "\n";
                 } else {
                     std::cerr << "Warning: Intrinsic " << intrinsic_name
                               << " not found in LLVM. This operation will not be converted.\n";
@@ -104,6 +103,7 @@ class NRSIntrinsicSelector {
             static const std::array intrinsic_names{
                 std::make_pair("min", Intrinsic::minnum),
                 std::make_pair("max", Intrinsic::maxnum),
+                std::make_pair("sqrt", Intrinsic::sqrt),
             };
 
             for (const auto &[intrinsic_name, src_intrinsic_id] : intrinsic_names) {
@@ -226,14 +226,52 @@ class NRSConversionPass : public PassInfoMixin<NRSConversionPass> {
                     } else if (auto *intrinsic_replacement =
                                    intrinsic_selector.get_intrinsic_replacement(I)) {
                         IRBuilder builder(&I);
-                        std::vector<Value *> operands = [&I] {
-                            const auto operands = I.operands();
-                            std::vector<Value *> operand_vec(operands.begin(),
-                                                             std::next(operands.begin(), 2));
-                            return operand_vec;
-                        }();
-                        Value *new_call = builder.CreateCall(intrinsic_replacement, operands);
-                        I.replaceAllUsesWith(new_call);
+
+                        std::vector<Value *> operands =
+                            [&I, arg_count = intrinsic_replacement->arg_size()] {
+                                const auto operands = I.operands();
+                                std::vector<Value *> operand_vec(
+                                    operands.begin(), std::next(operands.begin(), arg_count));
+                                return operand_vec;
+                            }();
+
+                        Value *new_node{};
+
+                        switch (I.getOpcode()) {
+                        case Instruction::FPToSI:
+                        case Instruction::FPToUI:
+                            // fpto{si, ui} return i32, but our intrinsics return i64, so we need to truncate the result back to i32
+                            new_node = builder.CreateCall(intrinsic_replacement, operands);
+                            new_node = builder.CreateTrunc(new_node, builder.getInt32Ty());
+                            break;
+
+                        case Instruction::SIToFP:
+                        case Instruction::UIToFP: {
+                            // {si, ui}tofp take i32, but our intrinsics expect i64, so we need to extend the operand to i64
+                            Value *new_operand =
+                                builder.CreateSExt(operands[0], builder.getInt64Ty());
+                            operands[0] = new_operand;
+                            new_node = builder.CreateCall(intrinsic_replacement, operands);
+                            break;
+                        }
+
+                        case Instruction::FCmp: {
+                            // For FCmp, we need to convert the result to i1 (aka bool)
+                            new_node = builder.CreateCall(intrinsic_replacement, operands);
+                            new_node = builder.CreateTrunc(new_node, builder.getInt1Ty());
+                            break;
+                        }
+
+                        default:
+                            new_node = builder.CreateCall(intrinsic_replacement, operands);
+                            break;
+                        }
+
+                        std::cout << "Replacing instruction " << I.getOpcodeName()
+                                  << " with intrinsic: " << intrinsic_replacement->getName().str()
+                                  << "\n";
+
+                        I.replaceAllUsesWith(new_node);
                         I.eraseFromParent();
                         Modified = true;
                     }
